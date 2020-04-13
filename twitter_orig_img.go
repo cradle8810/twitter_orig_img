@@ -13,7 +13,7 @@ import (
 type twit struct {
 	fileName string
 	html     []byte
-	picts    map[string]string
+	pictURLs []string
 }
 
 func main() {
@@ -31,6 +31,8 @@ func main() {
 	checkError(e)
 
 	page.findOrigPict()
+	page.renameLargeToOrig()
+	page.printURLs()
 }
 
 //Load file
@@ -59,15 +61,30 @@ func (t *twit) findOrigPict() error {
 		case html.ErrorToken:
 			return nil
 
+		// Find the tag(s) "<meta  property="og:image" content="(HERE)">"
 		case html.StartTagToken:
 			tagName, _ := token.TagName()
-			if 0 == strings.Compare(string(tagName), "meta") {
-				fmt.Println(">>meta")
+			if string(tagName) == "meta" {
+				key, val, _ := token.TagAttr()
+				if (string(key) == "property") && (string(val) == "og:image") {
+					_, val, _ = token.TagAttr()
+					t.pictURLs = append(t.pictURLs, string(val))
+				}
 			}
 		}
-
 	}
+}
 
+func (t *twit) renameLargeToOrig() {
+	for index, url := range t.pictURLs {
+		t.pictURLs[index] = strings.Replace(url, ":large", ":orig", -1)
+	}
+}
+
+func (t *twit) printURLs() {
+	for _, url := range t.pictURLs {
+		fmt.Println(url)
+	}
 }
 
 func checkError(e error) {
